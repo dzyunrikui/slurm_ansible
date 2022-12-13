@@ -1,0 +1,6 @@
+all:
+  children:
+    postgres:
+      hosts:
+        postgres_master:
+          ansible_host: 192.168.51.2
