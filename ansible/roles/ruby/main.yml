@@ -1,0 +1,23 @@
+---
+- name: "Ruby app deployment"
+  become: true
+    hosts: postgres
+
+  tasks:
+  - name: "build.nokogir"
+    ansible.builtin.shell: bundle config build.nokogiri --use-system-libraries
+  - name: "build install"
+    ansible.builtin.shell: bundle install --clean --no-cache --without development
+  - name: "service file"
+    ansible.builtin.copy:
+      src: xpaste.service
+      dest: /usr/lib/systemd/system/xpaste.service
+      owner: xpaste
+      group: xpaste
+      mode: '0644'
+  - name: "enable"
+      ansible.builtin.shell: systemctl enable xpaste.service
+  - name: "start"
+      ansible.builtin.shell: systemctl start xpaste.service
+
+

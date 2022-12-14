@@ -3,7 +3,10 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$/.." vcs="Git" />
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/ansible/roles/nginx" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/ansible/roles/postgres" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/ansible/roles/ruby/xpaste_practicum" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/ansible/roles/ruby_install" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/xpaste_practicum" vcs="Git" />
   </component>
 </project>

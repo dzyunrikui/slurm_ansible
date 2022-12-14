@@ -1,0 +1,16 @@
+[Unit]
+Description=xpaste
+
+
+[Service]
+Type=simple
+User=xpaste
+Group=xpaste
+WorkingDirectory=/home/rails/xpaste
+ExecStart=/usr/bin/bash -lc 'bundle exec rake db:migrate && bundle exec puma -b unix:///var/run/puma.sock -e $RAILS_ENV config.ru '
+TimeoutSec=30
+RestartSec=15s
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
