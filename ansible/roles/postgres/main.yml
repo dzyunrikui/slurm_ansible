@@ -1,0 +1,104 @@
+---
+- name: 'Initial install and configuration'
+  become: true
+  hosts: postgres
+  vars:
+    postgres_users_no_log: false # включаем отображение паролей в консоле для отладки, само собой в продакшене это надо выключить
+    postgresql_users:
+      - name: postgres
+        password: password
+
+  tasks:
+  # включаем таски из роли
+  - name: "Initialise variables"
+    include_role:
+      name: geerlingguy.postgresql
+      tasks_from: variables
+
+  - name: "Setup postgres"
+    include_role:
+      name: geerlingguy.postgresql
+      tasks_from: setup-RedHat
+
+  - name: "Init postgres"
+    include_role:
+      name: geerlingguy.postgresql
+      tasks_from: initialize
+
+
+  - name: Start PostgreSQL server
+    systemd:
+      name: "{{ postgresql_daemon }}"
+      state: started
+
+  - name: "Configure postgres"
+    include_role:
+      name: geerlingguy.postgresql
+      tasks_from: configure
+
+  - name: "Configure users"
+    include_role:
+      name: geerlingguy.postgresql
+      tasks_from: users
+# здесь можно сократить плейбук используя loop, подумайте как
+
+- name: "Setup master"
+  become: true
+  become_method: sudo
+  hosts: postgres
+  vars:
+    replica_password: "replica123"
+    postgres_master_ip: "{{ hostvars['postgres_master']['ansible_host'] }}" # hostvars берутся и из инвентори, таким образом мы можем использовать указанные нами ip даже без gather_facts
+    postgres_connection_ip: "192.168.51.1"
+
+  tasks:
+  - name: "Update postgresql.conf"
+    lineinfile: # замена одной строки в файле по регулярному выражению. Регулярные выражения сложная штука, но рекомендую их практиковать, сохраняет много времени и сил
+      path: "{{ postgresql_config_path }}/postgresql.conf"
+      regexp: "{{ item.regexp }}"
+      line: "{{ item.line }}"
+    with_items:
+    - regexp: "#listen_addresses = 'localhost'" # само регулярное выражение (в этом случае просто строка)
+      line: "listen_addresses = '{{ postgres_master_ip }}'" # замена
+    - regexp: "#archive_mode = off"
+      line: "archive_mode = on"
+    - regexp: "#archive_command = ''"
+      line: "archive_command = 'cp %p /var/lib/pgsql/{{ postgresql_version }}/archive/%f'"
+
+
+  - name: "Create archive directory"
+    file:
+      path: /var/lib/pgsql/{{ postgresql_version }}/archive
+      mode: 0700
+      owner: postgres
+      group: postgres
+      state: directory
+
+  - name: "Update pg_hba.conf"
+    blockinfile: # блоковая замена, Ансибл сам заменит блок в файле и создаст маркер, для кастомных маркеров (чтобы случайно ничего не перезаписать) рекомендую использовать атрибут marker
+      path: "{{ postgresql_config_path }}/pg_hba.conf"
+      insertafter: "#host replication postgres ::1/128 ident"
+      block: | # сам блок, | показывает yaml что дальше идет текст с переносами
+        host all postgres {{ postgres_connection_ip }}/32 md5
+
+  - name: Restart PostgreSQL server
+    ansible.builtin.service:
+      name: "{{ postgresql_daemon }}"
+      state: restarted
+      enabled: yes
+
+
+
+
+- name: "After install"
+  become: true
+  hosts: postgres
+
+  tasks:
+  - name: Healthcheck # хелсчек, забираем версию с постгрес.
+    postgresql_query:
+      query: SELECT version()
+    become: true
+    become_user: postgres
+
+
